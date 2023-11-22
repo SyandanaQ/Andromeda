@@ -33,4 +33,5 @@ export default function MyApp({ Component, pageProps: { session, ...pageProps } 
             </SessionProvider>
         );
     }
+    
 }
