@@ -1,0 +1,522 @@
+
+import { Calendar } from 'primereact/calendar';
+import { Dropdown } from "primereact/dropdown";
+import getConfig from "next/config";
+import { Button } from "primereact/button";
+import { Column } from "primereact/column";
+import { DataTable } from "primereact/datatable";
+import { Dialog } from "primereact/dialog";
+import { InputNumber } from "primereact/inputnumber";
+import { InputText } from "primereact/inputtext";
+import { InputTextarea } from "primereact/inputtextarea";
+import { RadioButton } from "primereact/radiobutton";
+import { Toast } from "primereact/toast";
+// import { Toolbar } from "primereact/toolbar";
+import { classNames } from "primereact/utils";
+import React, { useEffect, useRef, useState } from "react";
+import { OverlayPanel } from "primereact/overlaypanel";
+import { TabView, TabPanel } from "primereact/tabview";
+import { Skeleton } from "primereact/skeleton";
+import TabelSkaleton from "../../../component/tabel/skaleton";
+import { Paginator } from "primereact/paginator";
+import { FileUpload } from "primereact/fileupload";
+import { BreadCrumb } from "primereact/breadcrumb";
+import { AutoComplete } from "primereact/autocomplete";
+import axios from "axios";
+import TabelRekening from "../../../component/tabel/tabelrekening";
+import { Card } from 'primereact/card';
+import { Checkbox } from "primereact/checkbox";
+
+import TransaksiSimpanan from '../transaksiSimpanan';
+import MutasiSimpananBerjangka from '../mutasiSimpananBerjangka';
+import PencairanSimpananBerjangka from '../pencairanSimpananBerjangka';
+import MutasiAnggota from '../mutasiAnggota';
+import Pinjaman from '../pinjaman';
+
+export default function KasirPage() {
+  let emptySimpanan = {
+    id: "",
+    title: "",
+    REKENING: "",
+    ADMINISTRASI: "",
+    JENISREKENING: "",
+  };
+
+  let emptyteller = {
+    Kode: null,
+    Nama: null,
+    Alamat: null,
+    Telepon: null,
+    Rekening: null,
+    RekeningLama: null,
+    Tgl:null,
+};
+
+  const apiDirPath = "/api/_apibase_crud/";
+
+  const [showTransaksiSimpanan, setShowTransaksiSimpanan] = useState(false);
+  const [showMutasiSimpananBerjangka, setShowMutasiSimpananBerjangka] = useState(false);
+  const [showPencairanSimpananBerjangka, setShowPencairanSimpananBerjangka] = useState(false);
+  const [showMutasiAnggota, setShowMutasiAnggota] = useState(false);
+  const [showPinjaman, setShowPinjaman] = useState(false);
+
+  const [faktur, setFaktur] = useState("");
+  const [rekening, setRekening] = useState("");
+  const [tglTransaksi, setTglTransaksi] = useState(new Date());
+
+  const [teller, setTeller] = useState(emptyteller);
+  const toast = useRef(null);
+
+  const [deleteBankDialog, setDeleteBankDialog] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [deletebanksDialog, setDeletebanksDialog] = useState(false);
+  const [selectedbanks, setSelectedbanks] = useState(null);
+  const [bank, setBank] = useState(emptySimpanan);
+  const [loading, setLoading] = useState(false);
+  const [loadingItem, setLoadingItem] = useState(false);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [Simpanan, setSimpanan] = useState(emptySimpanan);
+  const [golonganSimpanan, setGolonganSimpanan] = useState(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [rekeningDialog, setRekeningDialog] = useState(false);
+  const [statusAction, setStatusAction] = useState(null);
+  const [globalFilter, setGlobalFilter] = useState(null);
+  const [globalFilterValue, setGlobalFilterValue] = useState("");
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [filteredItems, setFilteredItems] = useState(null);
+  const [date, setDate] = useState(null);
+  const [ingredient, setIngredient] = useState('');
+  const [value, setValue] = useState('');
+
+  const [value1, setValue1] = useState(42723);
+    const [value2, setValue2] = useState(0);
+    const [value3, setValue3] = useState(2351.35);
+    const [value4, setValue4] = useState(50);
+  
+  const breadcrumbHome = { icon: "pi pi-home", to: "/" };
+  const breadcrumbItems = [
+    { label: "Penjualan" },
+    { label: "Kasir", to: "#" },
+  ];
+
+  
+
+  const dt = useRef(null);
+
+  const [lazyState, setlazyState] = useState({
+    first: 0,
+    rows: 10,
+    page: 1,
+    sortField: null,
+    sortOrder: null,
+    filters: {},
+  });
+
+  const itemsSkelaton = Array.from({ length: 2 }, (v, i) => i);
+  const columns = [
+    { field: "KODE", header: "KODE" },
+    { field: "KETERANGAN", header: "KETERANGAN" },
+    { field: "ACTION", header: "ACTION" },
+  ];
+  const items = Array.from({ length: 100000 }).map((_, i) => ({
+    label: `Item #${i}`,
+    value: i,
+  }));
+
+  const searchItems = (event) => {
+    //in a real application, make a request to a remote url with the query and return filtered results, for demo purposes we filter at client side
+    let query = event.query;
+    let _filteredItems = [];
+
+    for (let i = 0; i < items.length; i++) {
+      let item = items[i];
+      if (item.label.toLowerCase().indexOf(query.toLowerCase()) === 0) {
+        _filteredItems.push(item);
+      }
+    }
+
+    setFilteredItems(_filteredItems);
+  };
+
+  const op = useRef(null);
+
+  useEffect(() => {
+    toggleDataTable({ index: 0 });
+    //loadLazyData();
+  }, []);
+
+  const onInputChange = (e, name) => {
+    const val = (e.target && e.target.value) || '';
+    let _teller = { ...teller };
+    _teller[`${name}`] = val;
+    setTeller(_teller);
+    console.log(teller);
+};
+
+  const renderHeader = () => {
+    return (
+        <div className="flex justify-content-end">
+        {/* <span className="p-input-icon-right ">
+                <Button icon="pi pi-print" label="Preview" severity="warning" />                                                                  
+            </span>   */}
+            {/* <span className="p-input-icon-right " style={{ marginLeft: '7px' }}>
+                <Button icon="pi pi-times" label="Cancel" severity="danger" />                                                     
+            </span> */}
+        <span className="p-input-icon-left" style={{ marginLeft: '7px' }}>
+          <i className="pi pi-search" />
+          <InputText
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            placeholder="Keyword Search"
+          />
+        </span>
+                         
+      </div>
+    );
+  };
+
+  const header = renderHeader();
+
+  const hideDeleteBankDialog = () => {
+    setDeleteBankDialog(false);
+  };
+
+  const confirmDeleteSelected = () => {
+    setDeletebanksDialog(true);
+  };
+
+
+  const loadFaktur = async (kode) => {
+    setLoading(true);
+    try {
+        let requestBody = {
+            KODE: kode, // Gunakan parameter kode yang diterima
+            LEN: "4"
+        };
+        const header = { 'Content-Type': 'application/json;charset=UTF-8', 'X-ENDPOINT': '/api/pinjaman/getFaktur' };
+        const vaTable = await axios.post(apiDirPath, requestBody, { headers: header });
+        const json = vaTable.data; console.log(json);
+        // setTotalRecords(json.total);
+        setFaktur(json);
+    } catch (error) {
+        console.error("Error while loading data:", error);
+    } finally {
+        setLoading(false);
+    }
+  };
+    // Fungsi untuk mengatur ulang variabel-variabel
+    const resetVariables = () => {
+      let _teller = { ...teller };
+      _teller[`Kode`] = '';
+      _teller[`Nama`] = '';
+      _teller[`Alamat`] = '';
+      _teller[`Rekening`] = '';
+      setTeller(_teller);
+      setFaktur("");
+      setShowTransaksiSimpanan(false);
+      setShowMutasiSimpananBerjangka(false);
+      setShowPencairanSimpananBerjangka(false);
+      setShowMutasiAnggota(false);
+      setShowPinjaman(false);
+    };
+
+    const hideForm = () => {
+      setShowTransaksiSimpanan(false);
+      setShowMutasiSimpananBerjangka(false);
+      setShowPencairanSimpananBerjangka(false);
+      setShowMutasiAnggota(false);
+      setShowPinjaman(false);
+    };
+
+
+  const initValue = () => {
+    let _teller = { ...teller };
+    _teller[`Kode`] = '';
+    _teller[`Nama`] = '';
+    _teller[`Alamat`] = '';
+    _teller[`Rekening`] = '';
+    setTeller(_teller);
+    setFaktur("");
+
+    const getDefaultTglTransaksi = async () => {
+      try {
+        let requestBody = {
+        };
+        const header = { 'Content-Type': 'application/json;charset=UTF-8', 'X-ENDPOINT': '/api/get_tgl_transaksi' };
+        const vaTable = await axios.post(apiDirPath, requestBody, { headers: header });
+        const json = vaTable.data;
+        const [tahun, bulan, tanggal] = json.split('-');
+  
+        // Ubah setiap bagian ke dalam bentuk bilangan bulatz
+        const tanggalInt = parseInt(tanggal, 10);
+        const bulanInt = parseInt(bulan, 10);
+        const tahunInt = parseInt(tahun, 10);
+  
+        // Buat objek Date baru dengan tiga bagian tersebut
+        const newDate = new Date(tahunInt, bulanInt - 1, tanggalInt);
+        // Tetapkan objek Date baru ke dalam state
+        setTglTransaksi(newDate);
+
+        let _teller = { ...teller };
+        //  _teller[`Faktur`] = val;
+   
+         const date = new Date(newDate);
+         const formattedDate = `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+         _teller[`Tgl`] = formattedDate;
+         setTeller(_teller);
+         
+      } catch (error) {
+        console.error(error);
+      }
+    };
+  
+    // Jalankan fungsi getDefaultTglTransaksi
+    getDefaultTglTransaksi();
+
+  };
+
+  const dataToSend = {
+    Rekening: rekening,
+    Faktur: faktur,
+    Tgl: tglTransaksi,
+    Nama: teller.Nama,
+  };
+
+
+  const onCIFBlur = async () => {
+    try {
+    // console.log("blurrify");
+    const Rekening = teller.Rekening; // Ganti dengan nilai string rekening yang sesuai
+    const TipeTransaksi = Rekening.substring(3, 4);
+
+    
+      const header = { 'Content-Type': 'application/json;charset=UTF-8', 'X-ENDPOINT': '/api/teller/getTipeTransaksi' };
+      let res = await axios.post(apiDirPath, { 'Rekening': Rekening }, { headers: header });
+      let data = res.data;
+      
+      //JIKA REKENING TIDAK DITEMUKAN
+      if (data.length === 0) {
+        toast.current.show({ severity: 'error', summary: 'Error', detail: 'Nomor Anggota / Rekening tidak ditemukan', life: 3000 });
+        resetVariables();
+      } 
+      
+      else {          //--->>>> BERHASIL DISINI
+        let _teller = { ...teller };
+        _teller[`Kode`] = data.Rekening;
+        _teller[`Rekening`] = data.Rekening;
+        _teller[`Nama`] = data.Nama;
+        _teller[`Alamat`] = data.Alamat;
+        setTeller(_teller);
+
+        console.log(data); //console.log(TipeTransaksi);
+        if (TipeTransaksi == "0") { // MUTASI ANGGOTA
+          // toast.current.show({ severity: 'success', summary: 'success', detail: 'MUTASI ANGGOTA', life: 3000 });
+          hideForm();
+            setTimeout(() => {
+              loadFaktur("MA");
+              setRekening(data.Kode);
+              setShowTransaksiSimpanan(false);
+              setShowMutasiSimpananBerjangka(false);
+              setShowPencairanSimpananBerjangka(false);
+                setShowMutasiAnggota(true);
+              setShowPinjaman(false);
+            }, 200);
+        } 
+
+          else if (TipeTransaksi == "1") { // MUTASI SIMPANAN
+            console.log(data);
+            if(data ===99){
+                toast.current.show({ severity: 'error', summary: 'Error', detail: 'Rekening Tabungan Telah Ditutup', life: 3000 });
+                resetVariables();
+            } 
+            else{
+              // toast.current.show({ severity: 'success', summary: 'success', detail: 'MUTASI SIMPANAN', life: 3000 });
+              hideForm();
+              setTimeout(() => {
+                loadFaktur("TB");
+                setRekening(data.Rekening);
+                setShowTransaksiSimpanan(true);
+                setShowPencairanSimpananBerjangka(false);
+                setShowMutasiSimpananBerjangka(false);
+                setShowMutasiAnggota(false);
+                setShowPinjaman(false);
+             }, 200);
+            }     
+        }
+        
+        else if (TipeTransaksi == "2") { // MUTASI SIMPANAN BERJANGKA
+          if(data ===99){
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Rekening Deposito Sudah Dicairkan', life: 3000 });
+            resetVariables();
+          }
+          else if(data ===44){
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Rekening Deposito Belum Diotorisasi', life: 3000 });
+            
+          }
+          else if(data.StatusDeposito==="1"){
+            // toast.current.show({ severity: 'success', summary: 'success', detail: 'MUTASI SIMPANAN BERJANGKA', life: 3000 });
+            hideForm();
+              setTimeout(() => {
+            loadFaktur("DP");
+            setRekening(data.Rekening);
+            setShowTransaksiSimpanan(false);
+            setShowMutasiAnggota(false);
+            setShowPencairanSimpananBerjangka(true);
+            setShowMutasiSimpananBerjangka(false);
+            setShowPinjaman(false);
+          }, 200);
+          }
+          else{
+            // toast.current.show({ severity: 'success', summary: 'success', detail: 'PENCAIRAN DEPOSITO', life: 3000 });
+            hideForm();
+              setTimeout(() => {
+              loadFaktur("DP");
+              setRekening(data.Rekening);
+              setShowTransaksiSimpanan(false);
+              setShowMutasiAnggota(false);
+              setShowPencairanSimpananBerjangka(false);
+              setShowMutasiSimpananBerjangka(true);
+              setShowPinjaman(false);
+            }, 200);
+          }
+
+        }
+        
+        else if (TipeTransaksi == "3") {
+          console.log(data);
+          if(data ===99){
+              toast.current.show({ severity: 'info', summary: 'Info', detail: 'Pinjaman Sudah Lunas', life: 3000 });
+              hideForm();
+              setTimeout(() => {
+               loadFaktur("AG");
+              setRekening(teller.Rekening);
+              setShowTransaksiSimpanan(false);
+              setShowPencairanSimpananBerjangka(false);
+              setShowMutasiSimpananBerjangka(false);
+              setShowMutasiAnggota(false);
+              setShowPinjaman(true);
+              }, 200);
+              
+          }
+          else if(data ===98){
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Rekening Belum Di Cairkan', life: 3000 });
+            resetVariables();
+        } 
+          else{
+            // toast.current.show({ severity: 'success', summary: 'success', detail: 'MUTASI KREDIT', life: 3000 });
+            hideForm();
+            setTimeout(() => {
+            loadFaktur("AG");
+            setRekening(data.Rekening);
+            setShowTransaksiSimpanan(false);
+            setShowPencairanSimpananBerjangka(false);
+            setShowMutasiSimpananBerjangka(false);
+            setShowMutasiAnggota(false);
+            setShowPinjaman(true);
+            }, 200);
+          } 
+      } 
+      }
+      
+
+    } catch (error) {
+        try {
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Nomor Anggota / Rekening tidak ditemukan', life: 3000 });
+            // initValue();
+            resetVariables();
+
+        } catch (error) {
+          resetVariables();
+
+        }
+        resetVariables();
+        console.log(error);
+    }
+
+
+    // console.log(TipeTransaksi);
+};
+
+  const toggleDataTable = async (event) => {
+    setActiveIndex(event.index ?? 0);
+    setLoadingItem(true);
+    setLoadingItem(false);
+  };
+
+  return (
+    <div className="grid crud-demo">
+      <div className="col-12">
+        {/* <BreadCrumb home={breadcrumbHome} model={breadcrumbItems} style={{ background: "none", border: "none" }} /> */}
+
+        <div className="card">
+          {" "}
+          {/*Main Form*/}
+          <Toast ref={toast} />
+          {/* <h4>Transaksi Teller</h4>
+          <hr /> */}
+          <div className="formgrid grid">
+            <div className="field col-12 mb-2 lg:col-2">
+              <label>Rekening Lama</label>
+              <div className="p-inputgroup">
+                <InputText id="" value="" onChange={(e) => onInputChange(e, "AO")} className={classNames({ "p-invalid": submitted && !teller.RekeningLama })} />
+                <Button icon="pi pi-search" className="p-button" />
+              </div>
+            </div>
+            <div className="field col-12 mb-2 lg:col-8">
+              <label>&nbsp;</label>
+              <div className="p-inputgroup">
+                <InputText id="barcode" value="" onChange={(e) => onInputChange(e, "")} required autoFocus className={classNames({ "p-invalid": submitted && !produk.KODE_TOKO })} />
+              </div>
+            </div>
+          </div>
+          <div className="formgrid grid">
+            <div className="field col-12 mb-2 lg:col-5">
+              <label>Rekening</label>
+              <div className="p-inputgroup">
+                <InputText value={teller.Rekening} onBlur={onCIFBlur} onChange={(e) => onInputChange(e, "Rekening")} required autoFocus={true} />
+              </div>
+            </div>
+            <div className="field col-12 mb-2 lg:col-5">
+              <label>Tanggal</label>
+              <div className="p-inputgroup">
+                <Calendar value={tglTransaksi} onChange={(e) => setTglTransaksi(e.value)} showIcon disabled dateFormat="dd-mm-yy" />
+              </div>
+            </div>
+          </div>
+          <div className="formgrid grid">
+            <div className="field col-12 mb-2 lg:col-6">
+              <label>Nama</label>
+              <div className="p-inputgroup">
+                <InputText id="barcode" value={teller.Nama} onChange={(e) => onInputChange(e, "")} required readOnly />
+              </div>
+            </div>
+
+            <div className="field col-12 mb-2 lg:col-6">
+              <label>Alamat</label>
+              <div className="p-inputgroup">
+                <InputText id="barcode" value={teller.Alamat} readOnly />
+              </div>
+            </div>
+          </div>
+          {/* <div className="formgrid grid">
+                    <div className="field col-12 lg:col-12">
+                        <label>Faktur</label>
+                        <div className="p-inputgroup">
+                        <InputText value={faktur} readOnly required />                               
+                            </div>
+                    </div>
+                    
+                </div> */}
+        </div>
+
+        {/* {showMutasiAnggota ? <MutasiAnggota data={dataToSend} /> : ""} Asli*/}
+
+        {showMutasiAnggota ? <MutasiAnggota data={dataToSend} resetVariables={resetVariables} /> : ""}
+        {showTransaksiSimpanan ? <TransaksiSimpanan data={dataToSend} resetVariables={resetVariables} /> : ""}
+        {showMutasiSimpananBerjangka ? <MutasiSimpananBerjangka data={dataToSend} resetVariables={resetVariables} /> : ""}
+        {showPencairanSimpananBerjangka ? <PencairanSimpananBerjangka data={dataToSend} resetVariables={resetVariables} /> : ""}
+        {showPinjaman ? <Pinjaman data={dataToSend} resetVariables={resetVariables} /> : ""}
+      </div>
+    </div>
+  );
+}
